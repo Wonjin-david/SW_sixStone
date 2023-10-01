@@ -6,8 +6,10 @@ import math
 BROWN = (95, 69, 19)
 DARKGREY = (70, 70, 70)
 BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
 RED = (255, 0, 0)
 YELLOW = (255, 255, 0)
+BLUE=(0,0,255)
 
 no_of_rows = 19
 no_of_columns = 19
@@ -36,10 +38,10 @@ def is_valid_location(board, row, col):
     return board[row][col] == 0
 
 
-def next_open_row(board, col):
-    for row in range(no_of_rows):
-        if board[row][col] == 0:
-            return row
+# def next_open_row(board, col):
+#     for row in range(no_of_rows):
+#         if board[row][col] == 0:
+#             return row
 
 
 def print_board(board):
@@ -52,7 +54,9 @@ def winner_move(board, piece):
     for slot in ind_list:
         a = np.where(board == 1, 0, board)
         a = np.where(board == 2, 1, a)
+        a = np.where(board == 3, 0, a)
         b = np.where(board == 2, 0, board)
+        b = np.where(board == 3, 0, b)
         check = sum(a[slot])
         if check >= C6:
             return True
@@ -62,23 +66,23 @@ def winner_move(board, piece):
     return False
 
 
-def evaluate_window(window, piece):
-    score = 0
-    opp_piece = PLAYER_PIECE
-    if piece == PLAYER_PIECE:
-        opp_piece = AI_PIECE
-
-    if window.count(piece) == 4:
-        score += 100
-    elif window.count(piece) == 3 and window.count(EMPTY) == 1:
-        score += 5
-    elif window.count(piece) == 2 and window.count(EMPTY) == 2:
-        score += 2
-
-    if window.count(opp_piece) == 3 and window.count(EMPTY) == 1:
-        score -= 4
-
-    return score
+# def evaluate_window(window, piece):
+#     score = 0
+#     opp_piece = PLAYER_PIECE
+#     if piece == PLAYER_PIECE:
+#         opp_piece = AI_PIECE
+#
+#     if window.count(piece) == 4:
+#         score += 100
+#     elif window.count(piece) == 3 and window.count(EMPTY) == 1:
+#         score += 5
+#     elif window.count(piece) == 2 and window.count(EMPTY) == 2:
+#         score += 2
+#
+#     if window.count(opp_piece) == 3 and window.count(EMPTY) == 1:
+#         score -= 4
+#
+#     return score
 
 
 # def is_terminal_node(board):
@@ -256,6 +260,9 @@ def draw_board(board):
             elif board[r][c] == AI_PIECE:
                 pygame.draw.circle(game_screen, YELLOW, (
                 int(c * SQUARESIZE + SQUARESIZE / 2), int(r * SQUARESIZE + SQUARESIZE / 2)), RADIUS)
+            elif board[r][c] == 3 :
+                pygame.draw.circle(game_screen, BLUE, (
+                int(c * SQUARESIZE + SQUARESIZE / 2), int(r * SQUARESIZE + SQUARESIZE / 2)), RADIUS)
     pygame.display.update()
 
 # def recent_drop():
@@ -309,10 +316,27 @@ ind_list_collect = [ind_list_hor, ind_list_ver, ind_list_diag1, ind_list_diag2]
 
 # 메뉴창과 바둑창 설정
 pygame.init()
-main_screen = pygame.display.set_mode((500,200))
+main_screen = pygame.display.set_mode((500,400))
 pygame.display.set_caption('CONNECT 6 :: MAIN')
-button_rect = pygame.Rect(200, 100, 100, 50)
+myfont = pygame.font.Font(None, 20)
+p1_text = myfont.render("Player 1", True, BLACK) #pygame.font.Font(None, 36)
+p2_text = myfont.render("Player 2", True, BLACK)
+obstacle = myfont.render("Number of obstacles", True, BLACK)
+start_button = pygame.Rect(200, 300, 100, 50)
+player1_button = (200,50)
+player2_button = (300,50)
+ob0_button = (300, 150)
+ob1_button = (300, 180)
+ob2_button = (300, 210)
+ob3_button = (300, 240)
+ob4_button = (300, 270)
+button_radius = 20
+selected_button = AI
+selected_ob = 0
 show_main_screen = True
+turn = 0
+ob_cnt=0
+
 while True:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -320,13 +344,64 @@ while True:
             sys.exit()
         if event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:  # 마우스 왼쪽 버튼을 클릭했을 때
-                if button_rect.collidepoint(event.pos):  # 버튼이 클릭되었을 때, 초기 화면을 숨기고 새로운 창을 열어 게임 진행
-                    print("Here")
+                if start_button.collidepoint(event.pos):  # 버튼이 클릭되었을 때, 초기 화면을 숨기고 새로운 창을 열어 게임 진행
                     show_main_screen = False
                     pygame.quit()
+                d1 = pygame.math.Vector2(event.pos[0] - player1_button[0], event.pos[1] - player1_button[1]).length()
+                d2 = pygame.math.Vector2(event.pos[0] - player2_button[0], event.pos[1] - player2_button[1]).length()
+                if d1 <= button_radius:
+                    selected_button = PLAYER
+                elif d2 <= button_radius:
+                    selected_button = AI
+                ob0 = pygame.math.Vector2(event.pos[0] - ob0_button[0], event.pos[1] - ob0_button[1]).length()
+                ob1 = pygame.math.Vector2(event.pos[0] - ob1_button[0], event.pos[1] - ob1_button[1]).length()
+                ob2 = pygame.math.Vector2(event.pos[0] - ob2_button[0], event.pos[1] - ob2_button[1]).length()
+                ob3 = pygame.math.Vector2(event.pos[0] - ob3_button[0], event.pos[1] - ob3_button[1]).length()
+                ob4 = pygame.math.Vector2(event.pos[0] - ob4_button[0], event.pos[1] - ob4_button[1]).length()
+                if ob0 <= button_radius/2:
+                    selected_ob = 0
+                elif ob1 <= button_radius/2:
+                    selected_ob = 1
+                elif ob2 <= button_radius/2:
+                    selected_ob = 2
+                elif ob3 <= button_radius/2:
+                    selected_ob = 3
+                elif ob4 <= button_radius/2:
+                    selected_ob = 4
         if show_main_screen:
-            main_screen.fill((255, 255, 255))  # 흰색으로 화면 채우기
-            pygame.draw.rect(main_screen, (0, 0, 255), button_rect)  # 파란색 버튼 그리기
+            main_screen.fill(WHITE)  # 흰색으로 화면 채우기
+            # p1_text = myfont.render("Player 1", True, BLACK)
+            main_screen.blit(p1_text, (170, 75))
+            main_screen.blit(p2_text, (270, 75))
+            main_screen.blit(obstacle, (100, 125))
+            pygame.draw.rect(main_screen, BLUE, start_button)  # 파란색 버튼 그리기
+            pygame.draw.circle(main_screen, BLACK, player1_button, button_radius, 2)
+            pygame.draw.circle(main_screen, BLACK, player2_button, button_radius, 2)
+            pygame.draw.circle(main_screen, BLACK, ob0_button, button_radius/2, 2)
+            pygame.draw.circle(main_screen, BLACK, ob1_button, button_radius/2, 2)
+            pygame.draw.circle(main_screen, BLACK, ob2_button, button_radius/2, 2)
+            pygame.draw.circle(main_screen, BLACK, ob3_button, button_radius/2, 2)
+            pygame.draw.circle(main_screen, BLACK, ob4_button, button_radius/2, 2)
+            # pygame.draw.circle(main_screen, YELLOW, player1_button, button_radius)
+            # pygame.draw.circle(main_screen, RED, player2_button, button_radius)
+            if selected_button == AI:
+                # pygame.draw.circle(main_screen, (0, 0, 0), player2_button, button_radius, 2)
+                pygame.draw.circle(main_screen, YELLOW, player2_button, button_radius-2)
+                turn = -1
+            elif selected_button == PLAYER:
+                # pygame.draw.circle(main_screen, (0, 0, 0), player1_button, button_radius, 2)
+                pygame.draw.circle(main_screen, RED, player1_button, button_radius-2)
+                turn =-2
+            if selected_ob == 0:
+                pygame.draw.circle(main_screen, RED, ob0_button, button_radius/2-2)
+            elif selected_ob == 1:
+                pygame.draw.circle(main_screen, RED, ob1_button, button_radius/2-2)
+            elif selected_ob == 2:
+                pygame.draw.circle(main_screen, RED, ob2_button, button_radius/2-2)
+            elif selected_ob == 3:
+                pygame.draw.circle(main_screen, RED, ob3_button, button_radius/2-2)
+            elif selected_ob == 4:
+                pygame.draw.circle(main_screen, RED, ob4_button, button_radius/2-2)
             pygame.display.flip()
         else:
             pygame.init()
@@ -335,20 +410,63 @@ while True:
             height = no_of_rows * SQUARESIZE
             size = (width, height)
             RADIUS = int(SQUARESIZE / 2 - 5)
+            myfont = pygame.font.SysFont("monospace", 75)
             game_screen = pygame.display.set_mode(size)
+            game_screen.fill(BROWN)
             pygame.display.set_caption('CONNECT 6 :: GAME')
-            background_color = BROWN
             game_screen.fill(BROWN)
             draw_board(board)
             pygame.display.update()
 
 
-            # 게임 진행
             game_over = False
             player_count = 0
-            turn = 0
-            while not game_over:
 
+            while not game_over:
+                # print("play")
+                if ob_cnt>=selected_ob :
+                    # print("here ob_cnt : ", ob_cnt)
+                    break
+
+                for event in pygame.event.get():
+
+                    if event.type == pygame.QUIT:
+                        sys.exit()
+
+                    pygame.display.update()
+                    if event.type == pygame.MOUSEBUTTONDOWN:
+
+                        obx=event.pos[0]
+                        oby=event.pos[1]
+                        col = int(math.floor(obx / SQUARESIZE))
+                        row = int(math.floor(oby / SQUARESIZE))
+
+                        if is_valid_location(board, row, col):
+                            piece_drop(board, row, col, 3)
+                            draw_board(board)
+                            ob_cnt+=1
+                            # print("ob++")
+                    #     else :
+                    #         continue
+                    # draw_board(board)
+
+
+
+            # for xx in range(selected_ob) :
+            #     print("xx : ",xx)
+            #     obx=event.pos[0]
+            #     oby=event.pos[1]
+            #     col = int(math.floor(obx / SQUARESIZE))
+            #     row = int(math.floor(oby / SQUARESIZE))
+            #
+            #     if is_valid_location(board, row, col):
+            #         piece_drop(board, row, col, 3)
+            #     else:
+            #         xx-=1
+            #         continue
+            #     draw_board(board)
+
+            while not game_over:
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
                         sys.exit()
@@ -356,8 +474,7 @@ while True:
                     pygame.display.update()
                     if event.type == pygame.MOUSEBUTTONDOWN:
 
-                        if turn % 2 == 1:
-                            print("Player")
+                        if turn == -1:
                             posx = event.pos[0]
                             posy = event.pos[1]
                             col = int(math.floor(posx / SQUARESIZE))
@@ -365,6 +482,21 @@ while True:
 
                             if is_valid_location(board, row, col):
                                 piece_drop(board, row, col, PLAYER_PIECE)
+                                turn = 0
+
+                            draw_board(board)
+                            break
+
+                        if turn % 2 == 1:
+                            posx = event.pos[0]
+                            posy = event.pos[1]
+                            col = int(math.floor(posx / SQUARESIZE))
+                            row = int(math.floor(posy / SQUARESIZE))
+
+                            if is_valid_location(board, row, col):
+                                piece_drop(board, row, col, PLAYER_PIECE)
+                                px = row
+                                py = col
                                 player_count += 1
 
                                 if winner_move(board, PLAYER_PIECE):
@@ -376,13 +508,22 @@ while True:
                                     player_count = 0
                                     turn += 1
 
-                                draw_board(board)
+                            else:
+                                if (px,py) == (row,col):
+                                    piece_drop(board, row, col, 0)
+                                    player_count -= 1
+                                    game_screen.fill(BROWN)
+
+                            draw_board(board)
 
 
                 if turn % 2 == 0 and not game_over:
-                    print("AI")
-                    if turn == 0:
+                    px = -1
+                    py = -1
+                    if turn == -2:
                         piece_drop(board, 9, 9, AI_PIECE)
+                        turn =1
+                        break
                     else:
                         pos, minimax_score = minimax(board, 5, -math.inf, math.inf, True)
                         pos1 = pos[0]
@@ -400,5 +541,17 @@ while True:
 
                     turn += 1
 
-                if game_over:
-                    pygame.time.wait(3000)
+            if game_over:
+                pygame.time.wait(3000)
+                pygame.quit()
+                pygame.init()
+                main_screen = pygame.display.set_mode((500,400))
+                pygame.display.set_caption('CONNECT 6 :: MAIN')
+                start_button = pygame.Rect(200, 300, 100, 50)
+                player1_button = (200,50)
+                player2_button = (300,50)
+                button_radius = 20
+                selected_button = AI
+                show_main_screen = True
+                ob_cnt=0
+                board = board_create()
