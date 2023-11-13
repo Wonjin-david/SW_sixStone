@@ -52,8 +52,8 @@ def print_board(board):
 
 
 # connect 6 완성되었을 때
-def winner_move(board, piece):
-    """checks if the game is won for the player this board belongs to"""
+def winner_check(board, piece):
+    """승자 체크"""
     for slot in ind_list:
         a = np.where(board == 1, 0, board)
         a = np.where(board == 2, 1, a)
@@ -68,7 +68,7 @@ def winner_move(board, piece):
             return True
     return False
 
-def minimax(board, depth, alpha, beta, maximizingPlayer):
+def minimax(board, depth):
 
     board_ai = np.where(board == 1, 0, board)
     board_ai = np.where(board == 2, 1, board_ai)
@@ -83,7 +83,7 @@ def minimax(board, depth, alpha, beta, maximizingPlayer):
         for i in range(depth):
             if i % 2 == 0:
 
-                bestmoves, scores = find_best_mvs(board_ai, board_player)
+                bestmoves, scores = check_best_moves(board_ai, board_player)
                 moves = [x for y, x in sorted(zip(scores, bestmoves), reverse=True)]
                 s = [y for y, x in sorted(zip(scores, bestmoves), reverse=True)]
                 if i == 0:
@@ -92,7 +92,7 @@ def minimax(board, depth, alpha, beta, maximizingPlayer):
                 piece_drop(board_ai, moves[0][1][0], moves[0][1][1], 1)
             else:
                 #  min
-                bestmoves, scores = find_best_mvs(board_player, board_ai)
+                bestmoves, scores = check_best_moves(board_player, board_ai)
                 moves = [x for y, x in sorted(zip(scores, bestmoves), reverse=True)]
                 s = [y for y, x in sorted(zip(scores, bestmoves), reverse=True)]
                 piece_drop(board_player, moves[0][0][0], moves[0][0][1], 1)
@@ -104,38 +104,38 @@ def minimax(board, depth, alpha, beta, maximizingPlayer):
         if score[k] == maxValue:
             return move[k]
 
-def find_best_mvs(ai, player):
-    """finds best local moves"""
+def check_best_moves(ai, player):
+    """최적화된 이동 체크"""
     moves = []
-    best1 = apriori_1(ai, player)
+    best1 = stone_1(ai, player)
     for i in range(10): #eval_pri -> 우리가 설정하는 값
-        best2 = apriori_2(ai, player, best1[i])
+        best2 = stone_2(ai, player, best1[i])
         for j in range(10):
             moves.append((best1[i], best2[j]))
     bestmoves, scores = aposteriori(ai, player, moves)
     return bestmoves, scores
 
-def apriori_1(ai, player):
-    """evaluate board before making 1st move"""
-    B_M, B_O = count_mat(ai, player, 4)
+def stone_1(ai, player):
+    """착수할 첫번째 돌의 위치 계산"""
+    B_M, B_O = ai_calculate(ai, player, 4)
     ai_pri_1 = np.array([2, 6, 0, 1000]).reshape(4,1,1)
     player_pri_1 = np.array([1, 4, 10, 100]).reshape(4,1,1)
     B_eval = sum(B_M*ai_pri_1 + B_O*player_pri_1)
-    bestmoves = top_n_indexes(B_eval, 10)
+    bestmoves = check_top_n(B_eval, 10)
     return bestmoves
 
-def apriori_2(ai, player, move1):
-    """evaluate board before making 2nd move"""
+def stone_2(ai, player, move1):
+    """착수할 두번째 돌의 위치 계산"""
     board_ai_virt = np.zeros((no_of_rows, no_of_columns)) + ai
     board_ai_virt[move1] = 1
-    B_M, B_O = count_mat(board_ai_virt, player, 5)
+    B_M, B_O = ai_calculate(board_ai_virt, player, 5)
     ai_pri_2 = np.array([2, 1, 6, 0, 1000]).reshape(5,1,1)
     player_pri_2 = np.array([1, 4, 6, 100, 100]).reshape(5,1,1)
     B_eval = sum(B_M*ai_pri_2 + B_O*player_pri_2)
-    bestmoves = top_n_indexes(B_eval, 10)
+    bestmoves = check_top_n(B_eval, 10)
     return bestmoves
 
-def count_mat(ai, player, n_max):
+def ai_calculate(ai, player, n_max):
     """evaluate board by checking the number of stones adjacent to each
     point of the board. outpiut are 5 matrices"""
     B_M = np.zeros((n_max, no_of_rows, no_of_columns))
@@ -152,11 +152,11 @@ def count_mat(ai, player, n_max):
                 B_O_loop[check_op-1,:,:][slot] = 1 #B_O_loop[check_op-1,:,:][slot]
         B_M += B_M_loop
         B_O += B_O_loop
-    B_M = only_free(B_M, ai, player)
-    B_O = only_free(B_O, ai, player)
+    B_M = stone_free(B_M, ai, player)
+    B_O = stone_free(B_O, ai, player)
     return B_M, B_O
 
-def count_num(ai, player):
+def ai_evaluate(ai, player):
     """evaluate board by counting total number of slots with numbers up to
     n_max. output are n_max numbers"""
     B_M = np.zeros((6))
@@ -171,15 +171,14 @@ def count_num(ai, player):
                 B_O[check_op-1] += 1
     return B_M, B_O
 
-def only_free(B, ai, player):
-    """gets rid of occupied spaces"""
-    # multiply with free spaces
+def stone_free(B, ai, player):
+    # 빈 판에 현재 놓여져 있는 돌 착수
     board_free = np.remainder(ai + player + np.ones((no_of_rows, no_of_columns)), 2)
     B *= board_free
     return B
 
 def aposteriori(ai, player, moves):
-    """evaluate board after making two moves"""
+    """두 돌 착수 후에 보드 계산"""
     # only unique moves
     ii = 0
     while ii<len(moves):
@@ -195,7 +194,7 @@ def aposteriori(ai, player, moves):
         board_ai_virt = np.zeros((no_of_rows, no_of_columns)) + ai
         board_ai_virt[checkmove[0]] = 1
         board_ai_virt[checkmove[1]] = 1
-        B_M, B_O = count_num(board_ai_virt, player)
+        B_M, B_O = ai_evaluate(board_ai_virt, player)
         score = sum(B_M*ai_pos-B_O*player_pos)
         checklist.append(checkmove)
         scores.append(-score)
@@ -206,8 +205,7 @@ def aposteriori(ai, player, moves):
     return moves, scores
 
 
-def top_n_indexes(array, n):
-    """function gets indices in form of tuples of n largest entries of array"""
+def check_top_n(array, n):
     inds = np.argpartition(array, array.size-n, axis=None)[-n:]
     width = array.shape[1]
     return [divmod(i, width) for i in inds]
@@ -461,7 +459,7 @@ while True:
                                 py = col
                                 player_count += 1
 
-                                if winner_move(board, PLAYER_PIECE):
+                                if winner_check(board, PLAYER_PIECE):
                                     label = myfont.render("Player wins!!", 1, PINK)
                                     game_screen.blit(label, (40, 10))
                                     game_over = True
@@ -495,7 +493,7 @@ while True:
                         turn =1
                         break
                     else:
-                        pos = minimax(board, 4, -math.inf, math.inf, True)
+                        pos = minimax(board, 4)
                         pos1 = pos[0]
                         pos2 = pos[1]
 
@@ -504,7 +502,7 @@ while True:
                         recent_piece_drop(yellow_board, pos1[0], pos1[1], AI_PIECE)
                         recent_piece_drop(yellow_board, pos2[0], pos2[1], AI_PIECE)
 
-                        if winner_move(board, AI_PIECE):
+                        if winner_check(board, AI_PIECE):
                             label = myfont.render("AI wins!!", 1, BLUE)
                             game_screen.blit(label, (40, 10))
                             game_over = True
